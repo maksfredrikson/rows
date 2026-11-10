@@ -5,26 +5,33 @@ https://maksfredrikson.github.io/rows/live/display.html on the projector (GitHub
 `maksfredrikson/rows`; the band is still Netlify's function, which the pages call across sites). Publish
 with `../publish.sh "what changed"`. The Netlify copy of the pages is frozen while its credits are out. Form only: no line, block or figure is given a meaning.
 
-## The simplest form, since the night of 10 Nov 2026
+## One symbol each, built line by line (night of 10 Nov 2026)
 
-**One symbol each.** A person draws one symbol on the flag's own grid, 23 cells across and 61 down,
-and posts it. The wall shows the room's symbols as a grid that forms as people submit. No dictionary, no
-suggestions, no lines or blocks: the form is the person's.
+A person builds **one symbol** on the flag's grid, 23 cells across and up to 61 lines down, one line at a
+time, with the dictionary suggesting; the wall shows the room's symbols as a grid forming as they post.
 
-- **`index.html`, `draw.js` (phones).** Plain canvas, no libraries. Drag to draw; a drag that starts on
-  an inked cell erases; fast strokes are joined. **Mirror** (on by default) draws on both sides of the
-  middle column and is only a drawing aid. **Clear**, **Post**. The draft survives a reload. After
-  posting: "Draw another".
-- **`display.html`, `wall.js` (the wall).** Two columns. Left: every symbol as a tile, the grid
-  re-fitting itself so all stay on screen (forty fit); a new symbol forms row by row behind a red line,
-  with the maker's four-letter mark under it. Right: the count, Sound, and the join code (QR, enlarges on
-  a click) with the address. With Sound on, each forming row is strummed on a synthesised цымбалы.
+- **`index.html`, `draw.js` (phones).** Plain canvas, no libraries. Top: the symbol so far, small, with
+  the next line's place marked. Under it the raised module with the line being drawn and a chevron at each
+  end; the option's source; then **Accept** (primary) and **Post** (secondary). Drag along the line to ink
+  cells (a drag that starts on an inked cell erases). **Accept** takes the shown option as the symbol's
+  next line. **Post** sends the whole symbol; at 61 lines it posts itself. Tap the symbol to take the last
+  line back. The symbol in progress survives a reload.
+- **Suggestions, one at a time.** From the printer's dictionary (the 120 ends, `pool.txt`) cut into its
+  lines. Nothing drawn: the lines that follow your last line (for the first line, the lines the ends
+  begin with). Cells drawn: the lines that contain them, fewest added cells first; else the nearest by
+  cells. The chevrons swap the option; the last in the cycle is the line exactly as drawn.
+- **`display.html`, `wall.js` (the wall).** Two columns. Left: every symbol as a tile, the grid re-fitting
+  itself so all stay on screen (forty fit); a new symbol forms row by row behind a red line, with the
+  maker's four-letter mark under it. Right: the count, Sound, and the join code (QR, enlarges on a click)
+  with the address. With Sound on, each forming row is strummed on a synthesised цымбалы.
 - **How a symbol travels.** The store takes pieces of at most nine rows, so a symbol is posted as up to
-  seven pieces, each tagged `s:<symbol id>:<piece>:<which pieces exist>` in its `exact` field; blank
-  pieces are not sent. The wall shows a symbol once all its pieces are in, or after 12 s with what came.
-  Posts from before the symbol version (`SINCE` in `wall.js`) are never fetched.
-- The line-by-line version (blocks, Accept, Post, the playing record with four voices) is kept at
-  `lines/`.
+  seven pieces, each tagged `s:<symbol id>:<piece>:<which pieces exist>` in its `exact` field. The wall
+  shows a symbol once all its pieces are in, or after 12 s with what came. Posts from before the symbol
+  version (`SINCE` in `wall.js`) are never fetched.
+- `sketch.js` and `display.js` are only redirects that force a fresh load for phones holding an older
+  page; bump `?v=` in the script tags whenever `draw.js` or `wall.js` changes.
+- Kept aside: `free/` (draw the whole 23 by 61 freely, no suggestions) and `lines/` (blocks of nine
+  lines onto a common band, with the playing record and four voices).
 
 ## The store (`netlify/functions/ends.mjs`)
 

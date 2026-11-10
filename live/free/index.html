@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The room weaves</title>
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;background:#141414;color:#d8d8d8;font:14px/1.4 -apple-system,Helvetica,sans-serif;padding:10px 0 96px}
+  #bar{display:flex;gap:12px;align-items:baseline;color:#9a9a9a;font-size:12px;padding:0 14px 8px}
+  #bar b{color:#eee;font-weight:500}
+  #net{color:#7fd6a4;margin-left:auto}
+  #cv{display:block;margin:0 auto;touch-action:none;border-radius:4px}
+  #foot{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(#14141400,#141414 30%)}
+  #foot button{font:inherit;border-radius:12px;padding:16px 8px;border:1px solid #5a5a5a;background:#1c1c1c;color:#eee;flex:1}
+  #foot button.on{background:#3a3a3a}
+  #post{flex:2!important;background:#e8e8e8!important;color:#111!important;border:0!important;font-weight:600;font-size:17px}
+  button:disabled{opacity:.35}
+  #done{display:none;text-align:center;padding:30px 20px;color:#bbb}
+  #done b{display:block;color:#eee;font-size:18px;font-weight:500;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="bar"><b>Draw one symbol</b><span id="who"></span><span id="net"></span></div>
+<canvas id="cv" aria-label="your symbol, 23 by 61 cells: drag to draw, start on an inked cell to erase"></canvas>
+<div id="done"><b>Posted.</b>Look at the screen: your symbol is forming on the wall.</div>
+<div id="foot"><button id="mirror" class="on">Mirror on</button><button id="clear">Clear</button><button id="post" disabled>Post</button></div>
+<script src="draw.js?v=2"></script>
+</body>
+</html>
