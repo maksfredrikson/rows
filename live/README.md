@@ -5,23 +5,26 @@ https://maksfredrikson.github.io/rows/live/display.html on the projector (GitHub
 `maksfredrikson/rows`; the band is still Netlify's function, which the pages call across sites). Publish
 with `../publish.sh "what changed"`. The Netlify copy of the pages is frozen while its credits are out. Form only: no line, block or figure is given a meaning.
 
-## The contributor's page (`index.html`, `sketch.js`), as of 10 Nov 2026
+## The simplest form, since the night of 10 Nov 2026
 
-- **One column.** The common band above, lines running across, newest at the bottom. Under it a raised
-  module holding the person's block and, at its bottom, the line being drawn, cells scaled to fit, with a
-  chevron at each end of the line. Below: the option's source, then **Accept** (primary) and **Post**
-  (secondary) side by side.
-- **A block of up to nine lines, built one line at a time.** Drag along the dark line to ink cells (a
-  drag that starts on an inked cell erases). **Accept accepts the line** into the block. **Post posts
-  the whole block** to the common band; at nine lines it posts itself. Tap a line of the block to take
-  it back. Nine lines is the dictionary's own unit, the end, and the smallest that holds a figure, so
-  twenty people's blocks stack without cutting each other up.
-- **Options, one at a time.** From the printer's dictionary (the 120 ends, `pool.txt`) cut into its
-  lines. Nothing drawn: the lines that follow the line before (the block's last, else the band's last)
-  in the dictionary. Cells drawn: the lines that contain them, fewest added cells first; else the nearest
-  by cells. The chevrons swap the option; the last in the cycle is the line exactly as drawn.
-- On the band a person's own lines are brightest, dictionary-exact lines darkest.
-- Keys on a laptop: `h` `l` ink and move, space, `,` `.` swap, enter accept, `p` post.
+**One symbol each.** A person draws one symbol on the flag's own grid, 23 cells across and 61 down,
+and posts it. The wall shows the room's symbols as a grid that forms as people submit. No dictionary, no
+suggestions, no lines or blocks: the form is the person's.
+
+- **`index.html`, `sketch.js` (phones).** Plain canvas, no libraries. Drag to draw; a drag that starts on
+  an inked cell erases; fast strokes are joined. **Mirror** (on by default) draws on both sides of the
+  middle column and is only a drawing aid. **Clear**, **Post**. The draft survives a reload. After
+  posting: "Draw another".
+- **`display.html`, `display.js` (the wall).** Two columns. Left: every symbol as a tile, the grid
+  re-fitting itself so all stay on screen (forty fit); a new symbol forms row by row behind a red line,
+  with the maker's four-letter mark under it. Right: the count, Sound, and the join code (QR, enlarges on
+  a click) with the address. With Sound on, each forming row is strummed on a synthesised цымбалы.
+- **How a symbol travels.** The store takes pieces of at most nine rows, so a symbol is posted as up to
+  seven pieces, each tagged `s:<symbol id>:<piece>:<which pieces exist>` in its `exact` field; blank
+  pieces are not sent. The wall shows a symbol once all its pieces are in, or after 12 s with what came.
+  Posts from before the symbol version (`SINCE` in `display.js`) are never fetched.
+- The line-by-line version (blocks, Accept, Post, the playing record with four voices) is kept at
+  `lines/`.
 
 ## The store (`netlify/functions/ends.mjs`)
 
@@ -34,21 +37,6 @@ contributions (for test posts). The key is the `ADMIN_KEY` environment variable 
 its value is in `.admin_key.local` beside `.gitignore`, kept out of the repository:
 
     curl -X DELETE "https://ornament-rows.netlify.app/.netlify/functions/ends?key=$(cat .admin_key.local)"
-
-## The playing record (`display.html`, `display.js`)
-
-The common display after the Ornament Table Sequencer, in two columns: the composed ornament on the left,
-every control on the right (play, sound, the four voices, tempo, swing, the legend, and the join address
-as a QR code that enlarges on a click, with the address in text under it; qrcodejs from cdnjs).
-The ornament is turned as on the phones: every line runs across, 23 cells wide, and the band moves upward
-past a horizon in the middle, one line per eighth note, with tempo and swing; when the band has been
-played through it comes round again. Soot = a line that is exactly the dictionary's, madder red = a line
-someone made. Sound is four synthesised folk voices, approximations and not recordings, each with a toggle:
-**цымбалы** (every inked cell: a struck pair of strings, strummed), **жалейка** (the highest cell of a
-made line: a reed with a grace note and a late vibrato), **дуда** (a drone on tonic and fifth), **бубен**
-(a thump on the beat, jingles off it); Dorian on D, low at the left like the dulcimer's courses, each cell
-sounding from its own place between the speakers. Keys: space play, `m` sound, `,` `.` tempo, `[` `]`
-swing. The browser needs one click on Sound first.
 
 ## Running it from the laptop, no cloud (`../relay.py`)
 

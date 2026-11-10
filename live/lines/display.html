@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The room weaves · record</title>
+<style>
+  html,body{height:100%}
+  body{margin:0;background:#efe6d6;color:#34281a;font:14px/1.4 -apple-system,Helvetica,sans-serif;display:flex;overflow:hidden}
+  #stage{flex:1;min-width:0;height:100%}
+  #stage canvas{display:block}
+  #side{flex:none;width:clamp(200px,22vw,300px);box-sizing:border-box;padding:18px 18px 18px 6px;display:flex;flex-direction:column;gap:14px;height:100%}
+  #side h1{font-size:18px;font-weight:600;margin:0}
+  #side button{font:inherit;border:1px solid #34281a;border-radius:8px;background:transparent;color:inherit;padding:8px 12px;cursor:pointer;text-align:left}
+  #side button.on{background:#34281a;color:#efe6d6}
+  .row{display:flex;gap:8px}.row button{flex:1;text-align:center}
+  #voices{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  #voices button{padding:6px 8px;font-size:13px;text-align:center}
+  label{display:flex;flex-direction:column;gap:4px;font-size:13px}
+  label span{display:flex;justify-content:space-between}
+  input[type=range]{width:100%;accent-color:#34281a}
+  #now{font-size:13px;opacity:.75;min-height:38px}
+  #legend{font-size:12px;opacity:.8;display:flex;flex-direction:column;gap:4px}
+  #legend i{display:inline-block;width:11px;height:11px;margin-right:6px;vertical-align:-1px}
+  #join{margin-top:auto;font-size:13px}
+  #qr{background:#fff;padding:10px;border-radius:8px;margin-bottom:10px;cursor:zoom-in;width:fit-content}
+  #qr img,#qr canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+  #qr.big{position:fixed;inset:0;margin:auto;z-index:10;width:min(78vh,78vw);height:min(78vh,78vw);box-sizing:border-box;padding:4vh;cursor:zoom-out;box-shadow:0 0 0 100vmax rgba(52,40,26,.82)}
+  #join b{display:block;font-size:clamp(15px,1.5vw,20px);font-weight:600;word-break:break-all}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="side">
+  <h1>The room weaves</h1>
+  <div class="row"><button id="play">Play</button><button id="snd">Sound off</button></div>
+  <div id="voices"><button data-v="tsymbaly" class="on">цымбалы</button><button data-v="zhaleyka" class="on">жалейка</button><button data-v="duda" class="on">дуда</button><button data-v="buben" class="on">бубен</button></div>
+  <label><span>Tempo <b id="bpm-out">96</b></span><input id="bpm" type="range" min="40" max="200" value="96"></label>
+  <label><span>Swing <b id="swing-out">12%</b></span><input id="swing" type="range" min="0" max="0.5" step="0.01" value="0.12"></label>
+  <div id="now"></div>
+  <div id="legend"><span><i style="background:#34281a"></i>a line of the dictionary</span><span><i style="background:#b3261e"></i>a line someone made</span></div>
+  <div id="join"><div id="qr" title="Click to enlarge"></div><span id="net"></span>Scan, or type<b id="addr"></b></div>
+</div>
+<script src="../../vendor/p5.min.js"></script>
+<script>window.p5 || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"><\/script>')</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="display.js"></script>
+</body>
+</html>
