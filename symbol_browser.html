@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ornament symbols</title>
+<style>
+  :root { --ink: #222; --mute: #777; --line: #ddd; --bg: #fff; --sel: #b3261e; --sel-bg: #fbeae8; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font: 13px/1.4 -apple-system, Helvetica, sans-serif; color: var(--ink); background: var(--bg);
+         display: grid; grid-template-rows: auto 1fr; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0 8px 0 0; }
+  header label { color: var(--mute); display: inline-flex; gap: 5px; align-items: center; }
+  header input, header select { font: inherit; padding: 2px 5px; }
+  header .n { color: var(--mute); margin-left: auto; font-variant-numeric: tabular-nums; }
+  main { display: grid; grid-template-columns: minmax(300px, 38%) 1fr; min-height: 0; }
+  #list { overflow: auto; border-right: 1px solid var(--line); padding: 10px; display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px 8px; align-content: start; }
+  .sym { cursor: pointer; border-radius: 4px; padding: 4px; min-height: 108px; }
+  .sym:hover { background: #f4f4f4; }
+  .sym.on { background: var(--sel-bg); outline: 1px solid var(--sel); }
+  .sym canvas { display: block; width: 69px; height: 69px; margin: 0 auto; background: #fff; border: 1px solid var(--line); }
+  .sym .id { font-size: 10px; color: var(--mute); display: flex; justify-content: space-between; }
+  .sym .nm { font-size: 11px; line-height: 1.2; margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  #detail { overflow: auto; padding: 14px 18px; }
+  #detail .top { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+  #big { border: 1px solid var(--line); background: #fff; image-rendering: pixelated; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+  dt { color: var(--mute); }
+  dd { margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 6px; }
+  h3 { font-size: 13px; margin: 18px 0 6px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { border: 1px solid var(--line); border-radius: 12px; padding: 1px 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .chip:hover { border-color: var(--ink); }
+  .chip.on { background: var(--sel); color: #fff; border-color: var(--sel); }
+  .nav { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+  .nav button { font: inherit; padding: 2px 10px; }
+  .nav span { color: var(--mute); font-variant-numeric: tabular-nums; }
+  #plateWrap { overflow: auto; border: 1px solid var(--line); background: #fff; max-height: 60vh; }
+  #plate { display: block; cursor: crosshair; }
+  #band { display: block; border: 1px solid var(--line); background: #fff; }
+  .hint { color: var(--mute); font-size: 12px; margin: 4px 0 0; }
+  .empty { color: var(--mute); padding: 40px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; } #list { border-right: 0; border-bottom: 1px solid var(--line); } }
+</style>
+<body>
+<header>
+  <h1>Ornament symbols</h1>
+  <label>find <input id="q" type="search" placeholder="name or id" size="16"></label>
+  <label>tier <select id="tier"><option value="">all</option><option>core</option><option>local</option><option>singular</option></select></label>
+  <label>class <select id="cls"><option value="">all</option></select></label>
+  <label>fits <select id="fit"><option value="">any size</option><option value="11">11 × 11</option><option value="23">23 tall</option></select></label>
+  <label>sort <select id="sort"><option value="count">instances</option><option value="pages">sheets</option><option value="area">size</option><option value="id">id</option></select></label>
+  <span class="n" id="count"></span>
+</header>
+<main>
+  <div id="list"></div>
+  <div id="detail"><div class="empty">Pick a symbol. The right side shows it on every plate it is woven into, and the 23 × 61 band around each instance.</div></div>
+</main>
+<script src="browser_data.js"></script>
+<script>
+(() => {
+  const D = window.ORNAMENT, S = D.symbols, P = D.plates, I = D.instances;
+  const byId = Object.fromEntries(S.map(s => [s.id, s]));
+  const BAND_H = 23, BAND_W = 61;
+
+  // per-plate list of instances (for click-to-select on a plate)
+  const onPlate = P.map(() => []);
+  for (const id in I) for (const [pi, r, c, h, w, t] of I[id]) onPlate[pi].push({ id, r, c, h, w, t });
+
+  // ---- filters and list ----
+  const $ = s => document.querySelector(s);
+  const clsSel = $('#cls');
+  [...new Set(S.map(s => s.cls))].sort().forEach(c => { const o = document.createElement('option'); o.textContent = c; clsSel.append(o); });
+
+  let shown = [], selected = null;
+  const list = $('#list');
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { drawThumb(e.target); io.unobserve(e.target); } }), { root: list, rootMargin: '300px' });
+
+  function render() {
+    const q = $('#q').value.trim().toLowerCase(), tier = $('#tier').value, cls = clsSel.value, fit = +$('#fit').value, sort = $('#sort').value;
+    shown = S.filter(s => (!tier || s.tier === tier) && (!cls || s.cls === cls)
+      && (!fit || (fit === 11 ? s.h <= 11 && s.w <= 11 : s.h <= 23))
+      && (!q || s.name.includes(q) || s.id.toLowerCase().includes(q)));
+    shown.sort(sort === 'id' ? (a, b) => a.id < b.id ? -1 : 1 : (a, b) => b[sort] - a[sort] || (a.id < b.id ? -1 : 1));
+    $('#count').textContent = `${shown.length} of ${S.length} symbols · ${P.length} plates`;
+    list.replaceChildren(...shown.map(s => {
+      const d = document.createElement('div'); d.className = 'sym' + (selected === s.id ? ' on' : ''); d.dataset.id = s.id;
+      d.innerHTML = `<canvas width="69" height="69"></canvas><div class="id"><span>${s.id}</span><span>${s.h}×${s.w} · ${s.count}</span></div><div class="nm">${s.name}</div>`;
+      d.onclick = () => select(s.id);
+      io.observe(d);
+      return d;
+    }));
+  }
+  function drawThumb(d) {
+    const s = byId[d.dataset.id], cv = d.querySelector('canvas'), g = cv.getContext('2d');
+    const box = Math.max(BAND_H, s.h, s.w), cell = 69 / box;
+    const ox = (box - s.w) / 2 * cell, oy = (box - s.h) / 2 * cell;
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 69, 69);
+    // faint 23-cell frame so size reads against the band height
+    if (box > BAND_H) { g.strokeStyle = '#eee'; const f = BAND_H * cell; g.strokeRect((69 - f) / 2, (69 - f) / 2, f, f); }
+    g.fillStyle = '#b3261e';
+    s.rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') g.fillRect(ox + x * cell, oy + y * cell, Math.ceil(cell), Math.ceil(cell)); }));
+  }
+  ['q', 'tier', 'cls', 'fit', 'sort'].forEach(id => $('#' + id).addEventListener('input', render));
+
+  // ---- detail ----
+  let inst = [], k = 0;          // all instances of the selected symbol, current index
+  const plateCache = new Map();  // plate index -> offscreen canvas at 1 px per cell
+
+  function select(id, instIdx = 0) {
+    selected = id; const s = byId[id];
+    inst = I[id].slice().sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]); k = Math.min(instIdx, inst.length - 1);
+    document.querySelectorAll('.sym.on').forEach(e => e.classList.remove('on'));
+    const el = list.querySelector(`[data-id="${id}"]`); if (el) { el.classList.add('on'); el.scrollIntoView({ block: 'nearest' }); }
+    const plateCounts = new Map(); inst.forEach(([pi]) => plateCounts.set(pi, (plateCounts.get(pi) || 0) + 1));
+    $('#detail').innerHTML = `
+      <div class="top">
+        <canvas id="big"></canvas>
+        <div><h2>${s.id} · ${s.name}</h2>
+          <dl><dt>class</dt><dd>${s.cls}</dd><dt>size</dt><dd>${s.h} × ${s.w}, ${s.area} cells</dd><dt>symmetry</dt><dd>${s.sym}</dd>
+              <dt>tier</dt><dd>${s.tier}</dd><dt>instances</dt><dd>${inst.length} on ${plateCounts.size} plates</dd></dl>
+        </div>
+      </div>
+      <h3>Plates</h3><div class="chips" id="chips"></div>
+      <h3>In context</h3>
+      <div class="nav"><button id="prev">‹</button><span id="pos"></span><button id="next">›</button><span id="where"></span></div>
+      <div id="plateWrap"><canvas id="plate"></canvas></div>
+      <p class="hint">Every instance of this symbol is outlined; the current one is filled. Click any figure on the plate to browse to its symbol. Oblong-cell plates are drawn with square cells.</p>
+      <h3>The band: 23 × 61 around this instance</h3>
+      <canvas id="band"></canvas>`;
+    // big glyph
+    const big = $('#big'), cs = Math.max(4, Math.min(14, Math.floor(160 / Math.max(s.h, s.w))));
+    big.width = s.w * cs + 2; big.height = s.h * cs + 2; const bg = big.getContext('2d');
+    bg.fillStyle = '#b3261e'; s.rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') bg.fillRect(1 + x * cs, 1 + y * cs, cs, cs); }));
+    // plate chips
+    const chips = $('#chips');
+    [...plateCounts.keys()].sort((a, b) => a - b).forEach(pi => {
+      const c = document.createElement('span'); c.className = 'chip'; c.dataset.pi = pi;
+      c.textContent = `${P[pi].tag}${P[pi].strip ? ' ' + P[pi].strip : ''} ×${plateCounts.get(pi)}`;
+      c.onclick = () => { k = inst.findIndex(i => i[0] === pi); showInstance(); };
+      chips.append(c);
+    });
+    $('#prev').onclick = () => { k = (k - 1 + inst.length) % inst.length; showInstance(); };
+    $('#next').onclick = () => { k = (k + 1) % inst.length; showInstance(); };
+    showInstance();
+  }
+
+  function plateImage(pi) {
+    if (plateCache.has(pi)) return plateCache.get(pi);
+    const p = P[pi], cv = document.createElement('canvas'); cv.width = p.cols; cv.height = p.rows;
+    const g = cv.getContext('2d'), img = g.createImageData(p.cols, p.rows), pal = p.pal.map(hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)));
+    const ground = pal[p.ground] || [255, 255, 255];
+    p.cells.forEach((row, y) => [...row].forEach((ch, x) => {
+      const v = parseInt(ch === '.' ? '0' : ch, 16), rgb = pal[v] || ground, o = (y * p.cols + x) * 4;
+      img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255;
+    }));
+    g.putImageData(img, 0, 0); plateCache.set(pi, cv); return cv;
+  }
+
+  function showInstance() {
+    const [pi, r, c, h, w] = inst[k], p = P[pi];
+    $('#pos').textContent = `${k + 1} / ${inst.length}`;
+    $('#where').textContent = `${p.tag}${p.strip ? ' ' + p.strip : ''} · page ${p.page} · ${p.section} · row ${r}, col ${c}`;
+    document.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('on', +ch.dataset.pi === pi));
+    // full plate
+    const wrap = $('#plateWrap'), cv = $('#plate');
+    // fit the whole plate into the box so every instance is in view; scroll only when cells would go under 2 px
+    const cell = Math.max(2, Math.min(8, Math.floor((wrap.clientWidth - 2) / p.cols), Math.floor(window.innerHeight * 0.58 / p.rows)));
+    cv.width = p.cols * cell; cv.height = p.rows * cell; const g = cv.getContext('2d');
+    g.imageSmoothingEnabled = false; g.drawImage(plateImage(pi), 0, 0, cv.width, cv.height);
+    g.lineWidth = Math.max(1, cell / 3);
+    inst.forEach(([qi, rr, cc, hh, ww], i) => {
+      if (qi !== pi) return;
+      g.strokeStyle = i === k ? '#1a73e8' : 'rgba(26,115,232,.55)';
+      g.strokeRect(cc * cell + .5, rr * cell + .5, ww * cell - 1, hh * cell - 1);
+      if (i === k) { g.fillStyle = 'rgba(26,115,232,.18)'; g.fillRect(cc * cell, rr * cell, ww * cell, hh * cell); }
+    });
+    cv.onclick = e => {
+      const x = Math.floor(e.offsetX / cell), y = Math.floor(e.offsetY / cell);
+      const hits = onPlate[pi].filter(o => y >= o.r && y < o.r + o.h && x >= o.c && x < o.c + o.w);
+      if (!hits.length) return;
+      const o = hits.sort((a, b) => a.h * a.w - b.h * b.w)[0];   // the smallest figure under the cursor
+      const idx = I[o.id].slice().sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]).findIndex(i => i[0] === pi && i[1] === o.r && i[2] === o.c);
+      select(o.id, Math.max(0, idx));
+    };
+    // scroll the current instance into view inside the plate box
+    const cy = (r + h / 2) * cell, cx = (c + w / 2) * cell;
+    wrap.scrollTo({ top: Math.max(0, cy - wrap.clientHeight / 2), left: Math.max(0, cx - wrap.clientWidth / 2) });
+    // the band: 23 tall x 61 wide window, instance centred, clamped to the plate
+    const bc = Math.max(4, Math.min(10, Math.floor(($('#detail').clientWidth - 40) / BAND_W)));
+    const b = $('#band'); b.width = BAND_W * bc; b.height = BAND_H * bc; const bg = b.getContext('2d');
+    let r0 = Math.round(r + h / 2 - BAND_H / 2), c0 = Math.round(c + w / 2 - BAND_W / 2);
+    r0 = Math.max(0, Math.min(r0, p.rows - BAND_H)); c0 = Math.max(0, Math.min(c0, p.cols - BAND_W));
+    bg.fillStyle = '#f4f4f4'; bg.fillRect(0, 0, b.width, b.height); bg.imageSmoothingEnabled = false;
+    const sw = Math.min(BAND_W, p.cols - c0), sh = Math.min(BAND_H, p.rows - r0);
+    bg.drawImage(plateImage(pi), c0, r0, sw, sh, 0, 0, sw * bc, sh * bc);
+    bg.strokeStyle = '#1a73e8'; bg.lineWidth = 2; bg.strokeRect((c - c0) * bc + 1, (r - r0) * bc + 1, w * bc - 2, h * bc - 2);
+    bg.strokeStyle = 'rgba(0,0,0,.08)'; bg.lineWidth = 1;
+    for (let x = 1; x < BAND_W; x++) { bg.beginPath(); bg.moveTo(x * bc + .5, 0); bg.lineTo(x * bc + .5, b.height); bg.stroke(); }
+    for (let y = 1; y < BAND_H; y++) { bg.beginPath(); bg.moveTo(0, y * bc + .5); bg.lineTo(b.width, y * bc + .5); bg.stroke(); }
+  }
+
+  render();
+  const first = location.hash.slice(1); if (byId[first]) select(first);
+})();
+</script>
+</body>
+</html>

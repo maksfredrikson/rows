@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPELL v2</title>
+<!--
+  SPELL v2: a predictive ornament on the 23 x 61 band, after R. E. Gorin's SPELL (SAIL, 1971).
+  SPELL knew only the words its makers had typed in. This one knows only the symbols the 1953
+  album's weavers made (spell_data.js, from data/symbols). It does two things SPELL did:
+    1. a word one character off is corrected: an ink blob one cell away from a dictionary symbol
+       gets a "did you mean";
+    2. the next word is proposed: from the last symbol you made, what the plates put to its right
+       or below it, plus two authored rules (continue your own repeat; mirror across the band axis).
+  It invents nothing, names forms only, and logs every accept and refusal.
+-->
+<style>
+  :root { --ink: #222; --mute: #777; --line: #ddd; --red: #b3261e; --blue: #1a73e8; --green: #188038; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.4 -apple-system, Helvetica, sans-serif; color: var(--ink); background: #fff; }
+  header { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0 6px 0 0; }
+  header label { color: var(--mute); display: inline-flex; gap: 5px; align-items: center; }
+  header .sp { margin-left: auto; color: var(--mute); }
+  button { font: inherit; padding: 3px 10px; border: 1px solid #bbb; background: #fff; border-radius: 4px; cursor: pointer; }
+  button:hover { border-color: var(--ink); }
+  button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  main { display: grid; grid-template-columns: 1fr 320px; gap: 0; min-height: calc(100vh - 44px); }
+  #cloth { padding: 14px; overflow: auto; }
+  #grid { display: block; cursor: crosshair; touch-action: none; border: 1px solid var(--line); background: #fff; }
+  .hint { color: var(--mute); font-size: 12px; margin: 6px 0 0; }
+  #palette { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+  #palette canvas { border: 1px solid var(--line); cursor: pointer; background: #fff; }
+  #palette canvas.on { outline: 2px solid var(--blue); }
+  aside { border-left: 1px solid var(--line); padding: 12px 14px; overflow: auto; }
+  h3 { font-size: 12px; margin: 14px 0 6px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  h3:first-child { margin-top: 0; }
+  .item { padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+  .item.on { border-color: var(--blue); background: #eaf2fd; }
+  .item canvas { flex: none; background: #fff; }
+  .item .t { flex: 1; min-width: 0; }
+  .item .why { color: var(--mute); font-size: 11px; }
+  .item a.ev { color: var(--mute); text-decoration: none; font-size: 11px; margin-left: 4px; }
+  .item a.ev:hover { color: var(--blue); }
+  .src { font-size: 10px; padding: 0 5px; border-radius: 8px; color: #fff; background: #999; }
+  .src.corpus { background: var(--red); } .src.repeat { background: #555; } .src.period { background: #1f6f5f; } .src.mirror { background: #7a3c6e; } .src.typo { background: var(--green); }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .num { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--mute); }
+  #log { max-height: 160px; overflow: auto; font-size: 11px; color: var(--mute); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { border-left: 0; border-top: 1px solid var(--line); } }
+</style>
+<body>
+<header>
+  <h1>SPELL v2</h1>
+  <label>dictionary <select id="tier"><option value="figures">figures only (core)</option><option value="core">core (two or more sheets)</option><option value="all">core + local</option></select></label>
+  <label><input type="checkbox" id="axisY" checked> mirror across the band axis (row 12)</label>
+  <label><input type="checkbox" id="axisX"> mirror across the centre column (31)</label>
+  <label><input type="checkbox" id="wrap" checked title="the band is a ring: column 61 is column 0 again"> band continues past col 61</label>
+  <label><input type="checkbox" id="flagCells"> flag cells (1 : 1.7)</label>
+  <button id="undo" title="⌘Z / Ctrl+Z">Undo</button>
+  <button id="clear">Clear</button>
+  <span class="sp" id="status"></span>
+</header>
+<main>
+  <div id="cloth">
+    <canvas id="grid"></canvas>
+    <p class="hint">Draw with the mouse: a drag paints or erases. <b>Enter</b> accepts the proposal, <b>Tab</b> asks for the next one, <b>Esc</b> refuses, <b>⌘Z</b> undoes. Or click a symbol below, then click the band to stamp it.</p>
+    <div id="palette"></div>
+  </div>
+  <aside>
+    <h3>Read</h3>
+    <div id="read" class="muted">Nothing on the band yet.</div>
+    <h3>Did you mean</h3>
+    <div id="typos" class="muted">—</div>
+    <h3>Next</h3>
+    <div id="next" class="muted">—</div>
+    <div id="dropped" class="hint"></div>
+    <div class="row"><button id="accept" class="primary">Accept (Enter)</button><button id="skip">Next (Tab)</button><button id="refuse">Refuse (Esc)</button></div>
+    <h3>Log</h3>
+    <div class="row"><span id="tally" class="num muted"></span></div>
+    <div id="log"></div>
+    <div class="row"><button id="save">Save log</button></div>
+  </aside>
+</main>
+<script src="spell_data.js"></script>
+<script>
+(() => {
+  const D = window.SPELL, H = D.band[0], W = D.band[1];
+  const $ = s => document.querySelector(s);
+
+  // ---------- transforms (numpy's rot90 is counter-clockwise; +flipx mirrors left-right)
+  const rot = rows => { const h = rows.length, w = rows[0].length, out = [];
+    for (let y = 0; y < w; y++) { let s = ''; for (let x = 0; x < h; x++) s += rows[x][w - 1 - y]; out.push(s); } return out; };
+  const flipx = rows => rows.map(r => [...r].reverse().join(''));
+  const tf = (rows, k) => { let r = rows; for (let i = 0; i < k % 4; i++) r = rot(r); return k >= 4 ? flipx(r) : r; };
+  const key = rows => rows.join('/');
+  // FLIPY[k] / FLIPX[k]: the transform equal to "k, then a top-bottom / left-right mirror", found by probing
+  const PROBE = ['abc', 'def'], flipy = rows => rows.slice().reverse();
+  const which = rows => [0, 1, 2, 3, 4, 5, 6, 7].find(j => key(tf(PROBE, j)) === key(rows));
+  const FLIPY = [0, 1, 2, 3, 4, 5, 6, 7].map(k => which(flipy(tf(PROBE, k))));
+  const FLIPX = [0, 1, 2, 3, 4, 5, 6, 7].map(k => which(flipx(tf(PROBE, k))));
+  // A pair (a at its prototype orientation, b at offset dr,dc with rows bRows) turned by k as one piece:
+  // returns b's rows and offset once a has been turned by k.
+  function turnPair(aRows, bRows, dr, dc, k) {
+    const ah = aRows.length, aw = aRows[0].length, bh = bRows.length, bw = bRows[0].length;
+    const r0 = Math.min(0, dr), c0 = Math.min(0, dc), Hc = Math.max(ah, dr + bh) - r0, Wc = Math.max(aw, dc + bw) - c0;
+    const cv = Array.from({ length: Hc }, () => Array(Wc).fill('.'));
+    aRows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') cv[y - r0][x - c0] = 'a'; }));
+    bRows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') cv[dr - r0 + y][dc - c0 + x] = 'b'; }));
+    const t = tf(cv.map(r => r.join('')), k);
+    const box = m => { let y0 = 1e9, y1 = -1, x0 = 1e9, x1 = -1; t.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === m) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); } })); return [y0, y1, x0, x1]; };
+    const [ay0, , ax0] = box('a'), [by0, by1, bx0, bx1] = box('b');
+    const rows = []; for (let y = by0; y <= by1; y++) { let s = ''; for (let x = bx0; x <= bx1; x++) s += t[y][x] === 'b' ? '#' : '.'; rows.push(s); }
+    return { rows, dr: by0 - ay0, dc: bx0 - ax0 };
+  }
+
+  // ---------- dictionary: canonical form -> word; words by tier
+  let words = [], canon = new Map(), byId = new Map();
+  function loadDict() {
+    const mode = $('#tier').value;
+    // "figures": whole figures only; the segmenter's colour parts, blobs, solid blocks and bars are pieces of figures
+    const FRAG = /^(colour part|blob|solid figure|repeat piece|block|bar|mirror half)$/;
+    words = D.words.filter(w => mode === 'all' || (w.tier === 'core' && (mode === 'core' || !FRAG.test(w.cls))));
+    canon = new Map(); byId = new Map();
+    for (const w of words) {
+      byId.set(w.id, w); w.tf = []; w.area = w.rows.join('').split('#').length - 1;
+      for (let k = 0; k < 8; k++) { const r = tf(w.rows, k); w.tf.push(r); const kk = key(r); if (!canon.has(kk)) canon.set(kk, [w, k]); }
+    }
+  }
+
+  // ---------- the band
+  const cells = new Uint8Array(H * W);
+  const log = [];
+  // the band as a ring: a column past the right edge is the same column counted from the left
+  const wrapOn = () => $('#wrap').checked;
+  const col = x => wrapOn() ? ((x % W) + W) % W : x;
+  const idx = (y, x) => y * W + col(x);
+  let placed = [], typos = [], props = [], pk = 0, lastEdit = null, stamp = null, aspect = 1;
+  let dropped = { off: 0, hit: 0 };                 // proposals the band could not hold, last propose()
+  // undo: a snapshot of the band before every change (strokes, stamps, accepts, corrections, clear)
+  const history = [];
+  function snapshot() { history.push({ cells: cells.slice(), lastEdit }); if (history.length > 60) history.shift(); }
+  function undo() { const s = history.pop(); if (!s) return; cells.set(s.cells); lastEdit = s.lastEdit; log.push({ t: Date.now(), ev: 'undo' }); refresh(); }
+  const grid = $('#grid'), g = grid.getContext('2d');
+  let cw = 14, ch = 14;
+
+  function layout() {
+    const avail = Math.min($('#cloth').clientWidth - 30, 1100);
+    cw = Math.max(6, Math.floor(avail / W)); ch = Math.round(cw * aspect);
+    grid.width = W * cw + 1; grid.height = H * ch + 1; draw();
+  }
+
+  function draw() {
+    g.fillStyle = '#fff'; g.fillRect(0, 0, grid.width, grid.height);
+    // band axis and centre column
+    g.fillStyle = '#f3eef8'; if ($('#axisY').checked) g.fillRect(0, 11 * ch, grid.width, ch);
+    if ($('#axisX').checked) g.fillRect(30 * cw, 0, cw, grid.height);
+    g.strokeStyle = '#eee'; g.lineWidth = 1;
+    for (let x = 0; x <= W; x++) { g.beginPath(); g.moveTo(x * cw + .5, 0); g.lineTo(x * cw + .5, grid.height); g.stroke(); }
+    for (let y = 0; y <= H; y++) { g.beginPath(); g.moveTo(0, y * ch + .5); g.lineTo(grid.width, y * ch + .5); g.stroke(); }
+    g.fillStyle = '#b3261e';
+    for (let i = 0; i < cells.length; i++) if (cells[i]) g.fillRect((i % W) * cw + 1, Math.floor(i / W) * ch + 1, cw - 1, ch - 1);
+    // recognised words: thin blue outline; the anchor stronger
+    // a box that may cross the seam is drawn twice, once shifted a whole band left; the canvas clips the rest
+    const box = (c, r, w, h) => { g.strokeRect(c * cw + .5, r * ch + .5, w * cw, h * ch); if (c + w > W) g.strokeRect((c - W) * cw + .5, r * ch + .5, w * cw, h * ch); };
+    for (const p of placed) { g.strokeStyle = p === anchor() ? '#1a73e8' : 'rgba(26,115,232,.35)'; g.lineWidth = p === anchor() ? 2 : 1; box(p.c, p.r, p.w, p.h); }
+    // the current proposal as a ghost
+    const p = props[pk];
+    if (p) { g.fillStyle = 'rgba(26,115,232,.35)'; for (const [y, x] of p.cells) g.fillRect(x * cw + 1, y * ch + 1, cw - 1, ch - 1);
+      g.strokeStyle = '#1a73e8'; g.lineWidth = 2; if (p.source !== 'period') box(p.c, p.r, p.w, p.h); }
+    // the current typo correction: cells to add in green, to remove in red hatch
+    const t = typos[0];
+    if (t && !p) { for (const [y, x, add] of t.toggles) { g.fillStyle = add ? 'rgba(24,128,56,.5)' : 'rgba(255,255,255,.75)'; g.fillRect(x * cw + 1, y * ch + 1, cw - 1, ch - 1);
+      g.strokeStyle = add ? '#188038' : '#b3261e'; g.lineWidth = 2; g.strokeRect(x * cw + 1.5, y * ch + 1.5, cw - 2, ch - 2); } }
+    if (stamp && hover) { g.fillStyle = 'rgba(26,115,232,.3)'; stamp.rows.forEach((row, y) => [...row].forEach((c, x) => { if (c === '#') g.fillRect(col(hover[1] + x) * cw + 1, (hover[0] + y) * ch + 1, cw - 1, ch - 1); })); }
+  }
+
+  // ---------- reading the band: 8-connected blobs -> dictionary lookup
+  function blobs() {
+    const seen = new Uint8Array(H * W), out = [];
+    for (let i = 0; i < cells.length; i++) {
+      if (!cells[i] || seen[i]) continue;
+      const q = [i], pts = []; seen[i] = 1;
+      while (q.length) { const j = q.pop(); pts.push(j); const y = Math.floor(j / W), x = j % W;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = col(x + dx);
+          if (yy < 0 || yy >= H || xx < 0 || xx >= W) continue; const jj = yy * W + xx; if (cells[jj] && !seen[jj]) { seen[jj] = 1; q.push(jj); } } }
+      // the blob's left edge: on a ring, the column after the widest empty gap round the band
+      const used = new Uint8Array(W); for (const j of pts) used[j % W] = 1;
+      let c0 = W, c1 = 0; for (let x = 0; x < W; x++) if (used[x]) { c0 = Math.min(c0, x); c1 = Math.max(c1, x); }
+      if (wrapOn() && used[0] && used[W - 1]) { let best = 0, run = 0, start = 0;
+        for (let x = 0; x < 2 * W; x++) { if (used[x % W]) { if (run > best) { best = run; start = x % W; } run = 0; } else run++; }
+        if (best) { c0 = start; let span = 0; for (let x = 0; x < W; x++) if (used[x]) span = Math.max(span, ((x - c0) % W + W) % W); c1 = c0 + span; } }
+      let r0 = H, r1 = 0; for (const j of pts) { const y = Math.floor(j / W); r0 = Math.min(r0, y); r1 = Math.max(r1, y); }
+      const h = r1 - r0 + 1, w = c1 - c0 + 1, m = Array.from({ length: h }, () => Array(w).fill('.'));
+      for (const j of pts) m[Math.floor(j / W) - r0][((j % W - c0) % W + W) % W] = '#';
+      out.push({ r: r0, c: c0, h, w, rows: m.map(r => r.join('')), pts });
+    }
+    return out;
+  }
+
+  function read() {
+    placed = []; typos = [];
+    for (const b of blobs()) {
+      let best = null;
+      for (let k = 0; k < 8; k++) { const kk = key(tf(b.rows, k)); const hit = canon.get(kk); if (hit) { best = hit; break; } }
+      if (best) { const [w, kc] = best;              // b.rows == tf(w.rows, k) for the k below
+        const k = w.tf.findIndex(r => key(r) === key(b.rows));
+        placed.push({ id: w.id, name: w.name, r: b.r, c: b.c, h: b.h, w: b.w, t: k, pts: b.pts, touched: b.pts.includes(lastEdit) });
+      } else typos.push(...nearMiss(b));
+    }
+    placed.sort((a, b) => (b.touched - a.touched) || (b.pts.includes(lastEdit) - a.pts.includes(lastEdit)));
+    typos.sort((a, b) => a.d - b.d || b.word.n - a.word.n); typos = typos.slice(0, 3);
+  }
+
+  // Gorin's rule: a single cell change that makes a real word. The word sits inside the blob's box;
+  // every cell of the box must agree except one (two for blobs of 12 cells or more).
+  function nearMiss(b) {
+    const maxD = b.pts.length >= 12 ? 2 : 1, out = [];
+    for (const w of words) {
+      if (Math.abs(w.area - b.pts.length) > maxD) continue;   // ink counts can differ by at most the allowed changes
+      for (let k = 0; k < 8; k++) {
+        const r = w.tf[k], h = r.length, ww = r[0].length;
+        if (h > b.h + maxD || ww > b.w + maxD || h < b.h - maxD || ww < b.w - maxD) continue;
+        const R0 = Math.min(b.r, b.r + b.h - h), R1 = Math.max(b.r, b.r + b.h - h), C0 = Math.min(b.c, b.c + b.w - ww), C1 = Math.max(b.c, b.c + b.w - ww);
+        for (let rr = R0; rr <= R1; rr++) for (let cc = C0; cc <= C1; cc++) {
+          if (rr < 0 || rr + h > H || (!wrapOn() && (cc < 0 || cc + ww > W))) continue;
+          const toggles = []; let d = 0;
+          // cells the word needs
+          for (let y = 0; y < h && d <= maxD; y++) for (let x = 0; x < ww; x++) { const want = r[y][x] === '#' ? 1 : 0, have = cells[idx(rr + y, cc + x)];
+            if (want !== have) { if (++d > maxD) break; toggles.push([rr + y, col(cc + x), want === 1]); } }
+          if (d > maxD) continue;
+          // blob cells outside the word must go (columns measured from the blob's own left edge on the ring)
+          for (const j of b.pts) { const y = Math.floor(j / W), x = b.c + ((j % W - b.c) % W + W) % W; if (y < rr || y >= rr + h || x < cc || x >= cc + ww) { if (++d > maxD) break; toggles.push([y, col(x), false]); } }
+          if (d === 0 || d > maxD) continue;
+          out.push({ word: w, t: k, r: rr, c: cc, h, w: ww, d, toggles });
+        }
+      }
+    }
+    out.sort((a, b) => a.d - b.d || b.word.n - a.word.n);
+    const seen = new Set(); return out.filter(o => !seen.has(o.word.id) && seen.add(o.word.id)).slice(0, 2);
+  }
+
+  // ---------- predicting the next word
+  const anchor = () => placed[0] || null;
+  // 'off' = outside the band, 'hit' = over ink already there, or true when the symbol fits
+  function fits(rows, r, c) {
+    if (r < 0 || r + rows.length > H || (!wrapOn() && (c < 0 || c + rows[0].length > W)) || rows[0].length > W) return 'off';
+    for (let y = 0; y < rows.length; y++) for (let x = 0; x < rows[0].length; x++) if (rows[y][x] === '#' && cells[idx(r + y, c + x)]) return 'hit';
+    return true;
+  }
+  const inkCells = (rows, r, c) => { const o = []; rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') o.push([r + y, col(c + x)]); })); return o; };
+  function propose() {
+    props = []; pk = 0; dropped = { off: 0, hit: 0 }; const a = anchor(); if (!a) return;
+    const w = byId.get(a.id), out = [], seen = new Set();
+    const add = (word, t, r, c, source, why) => { const rows = word.tf[t]; const kk = `${word.id}/${t}/${r}/${c}`;
+      if (seen.has(kk)) return; seen.add(kk);
+      const f = fits(rows, r, c); if (f !== true) { dropped[f]++; return; }
+      out.push({ word, t, r, c, h: rows.length, w: rows[0].length, cells: inkCells(rows, r, c), source, why }); };
+    const addRows = (word, rows, r, c, source, why) => add(word, word.tf.findIndex(x => key(x) === key(rows)), r, c, source, why);
+    // repeat: continue the step between your last two of the same symbol
+    const same = placed.filter(p => p !== a && p.id === a.id && p.t === a.t);
+    if (same.length) { const p = same[0], dr = a.r - p.r; let dc = a.c - p.c;
+      if (wrapOn()) { dc = ((dc % W) + W) % W; if (dc > W / 2) dc -= W; }          // the shorter way round the ring
+      add(w, a.t, a.r + dr, a.c + dc, 'repeat', `continues your step of ${dr}, ${dc}`);
+      // period: a level step fills the whole ring at that step; copies that would collide are left out
+      if (dr === 0 && dc !== 0 && wrapOn()) {
+        const rows = w.tf[a.t], copies = Math.floor(W / Math.abs(dc)), cellsAll = [], seenC = new Set(); let made = 0, hit = 0, first = null;
+        for (let k = 1; k < copies; k++) { const c = col(a.c + k * dc); if (seenC.has(c)) continue; seenC.add(c);
+          if (placed.some(q => q.id === a.id && q.t === a.t && q.r === a.r && col(q.c) === c)) continue;
+          const f = fits(rows, a.r, c); if (f !== true) { hit++; continue; }
+          made++; if (first === null) first = c; cellsAll.push(...inkCells(rows, a.r, c)); }
+        if (made > 1) { const rem = W % Math.abs(dc);
+          out.push({ word: w, t: a.t, r: a.r, c: first, h: rows.length, w: rows[0].length, cells: cellsAll, source: 'period',
+            why: `fills the band at a step of ${Math.abs(dc)}: ${made} more copies${hit ? `, ${hit} left out where they would land on ink` : ''}${rem ? ` · 61 is not a multiple of ${Math.abs(dc)}, the seam is ${rem} short` : ''}` }); }
+      }
+    }
+    // mirror across the band axis (row 12 of 23) and the centre column (31 of 61)
+    if ($('#axisY').checked) add(w, FLIPY[a.t], 2 * 11 - (a.r + a.h - 1), a.c, 'mirror', 'mirror image across the band axis');
+    if ($('#axisX').checked) add(w, FLIPX[a.t], a.r, 2 * 30 - (a.c + a.w - 1), 'mirror', 'mirror image across the centre column');
+    // corpus: what the plates put to the right of / below this symbol
+    const gr = D.grammar[a.id] || {};
+    for (const dir of ['right', 'below']) for (const [bid, n, dr, dc, t] of gr[dir] || []) {
+      const b = byId.get(bid); if (!b) continue;
+      // the offset and b's orientation were measured with the anchor in its prototype orientation;
+      // turn the pair as one piece by the orientation the person gave the anchor
+      const p = turnPair(w.rows, b.tf[t], dr, dc, a.t);
+      addRows(b, p.rows, a.r + p.dr, a.c + p.dc, 'corpus', `${dir === 'right' ? 'right of it' : 'below it'} ${n} times in the 1953 plates`);
+    }
+    props = out.slice(0, 8);
+  }
+
+  // ---------- actions
+  function paint(cs, v) { for (const [y, x] of cs) cells[y * W + x] = v; }
+  function accept() {
+    if (props[pk] || typos[0]) snapshot();
+    const p = props[pk]; if (p) { paint(p.cells, 1); lastEdit = p.cells[0][0] * W + p.cells[0][1]; note('accept', p.word, p.source, pk); refresh(); return; }
+    const t = typos[0]; if (t) { for (const [y, x, add] of t.toggles) cells[y * W + x] = add ? 1 : 0; lastEdit = t.r * W + t.c; note('correct', t.word, 'typo', 0); refresh(); }
+  }
+  function skip() { if (!props.length) return; note('skip', props[pk].word, props[pk].source, pk); pk = (pk + 1) % props.length; render(); }
+  function refuse() { if (props[pk]) note('refuse', props[pk].word, props[pk].source, pk); else if (typos[0]) note('refuse', typos[0].word, 'typo', 0); props = []; typos = []; render(); }
+  function note(ev, word, source, k) { log.push({ t: Date.now(), ev, id: word.id, name: word.name, source, k }); }
+
+  function refresh() { read(); propose(); render(); }
+  function thumb(rows, px = 4) { const cv = document.createElement('canvas'); const h = rows.length, w = rows[0].length; cv.width = w * px + 2; cv.height = h * px + 2;
+    const x = cv.getContext('2d'); x.fillStyle = '#b3261e'; rows.forEach((row, y) => [...row].forEach((c, xx) => { if (c === '#') x.fillRect(1 + xx * px, 1 + y * px, px, px); })); return cv; }
+  // every listed symbol links to its instances on the plates (symbol_browser.html#id)
+  function item(rows, word, why, source, on) { const d = document.createElement('div'); d.className = 'item' + (on ? ' on' : ''); d.append(thumb(rows));
+    const t = document.createElement('div'); t.className = 't';
+    t.innerHTML = `${word.id} · ${word.name} ${source ? `<span class="src ${source}">${source}</span>` : ''}<a class="ev" href="symbol_browser.html#${word.id}" target="browser" title="see it on the plates">↗ plates</a><div class="why">${why}</div>`;
+    t.querySelector('a').onclick = e => e.stopPropagation(); d.append(t); return d; }
+  function render() {
+    draw();
+    const a = anchor();
+    const empty = s => Object.assign(document.createElement('div'), { className: 'muted', textContent: s });
+    $('#read').replaceChildren(...(placed.length ? placed.map(p => item(byId.get(p.id).tf[p.t], byId.get(p.id), `row ${p.r}, col ${p.c} · ${D.transforms[p.t]}${p === a ? ' · the one SPELL continues from' : ''}`, '', p === a)) : [empty('No dictionary symbol on the band yet.')]));
+    $('#typos').replaceChildren(...(typos.length ? typos.map((t, i) => item(t.word.tf[t.t], t.word, `${t.d} cell${t.d > 1 ? 's' : ''} away${i === 0 ? ' · Enter corrects' : ''}`, 'typo', i === 0)) : [empty('—')]));
+    $('#next').replaceChildren(...(props.length ? props.map((p, i) => { const d = item(p.word.tf[p.t], p.word, p.why, p.source, i === pk); d.onclick = () => { pk = i; render(); }; return d; })
+      : [empty(a ? 'Nothing the plates put next to this fits here.' : 'Make a symbol first; SPELL only continues what you made.')]));
+    const dr = []; if (dropped.off) dr.push(`${dropped.off} would fall outside the band`); if (dropped.hit) dr.push(`${dropped.hit} would land on ink already there`);
+    $('#dropped').textContent = dr.length ? `Not shown: ${dr.join('; ')}.` : '';
+    const n = { accept: 0, refuse: 0, skip: 0, correct: 0, undo: 0 }; for (const e of log) n[e.ev]++;
+    $('#tally').textContent = `${n.accept} accepted · ${n.refuse} refused · ${n.skip} passed over · ${n.correct} corrected · ${n.undo} undone`;
+    $('#log').replaceChildren(...log.slice(-30).reverse().map(e => Object.assign(document.createElement('div'), { textContent: `${new Date(e.t).toLocaleTimeString()} ${e.ev}${e.id ? ` ${e.id} ${e.name} (${e.source}${e.k ? ', #' + (e.k + 1) : ''})` : ''}` })));
+    $('#status').textContent = `${words.length} words · ${placed.length} on the band · ${cells.reduce((s, v) => s + v, 0)} cells`;
+    $('#undo').disabled = !history.length;
+  }
+
+  // ---------- mouse
+  let painting = null, hover = null;
+  const cellAt = e => { const r = grid.getBoundingClientRect(); const x = Math.floor((e.clientX - r.left) / cw), y = Math.floor((e.clientY - r.top) / ch); return (x >= 0 && x < W && y >= 0 && y < H) ? [y, x] : null; };
+  grid.addEventListener('pointerdown', e => { const c = cellAt(e); if (!c) return; grid.setPointerCapture(e.pointerId);
+    if (stamp) { if (fits(stamp.rows, c[0], c[1]) === true) { snapshot(); const ink = inkCells(stamp.rows, c[0], c[1]); paint(ink, 1); lastEdit = ink[0][0] * W + ink[0][1]; setStamp(null); refresh(); } return; }
+    snapshot(); painting = cells[c[0] * W + c[1]] ? 0 : 1; cells[c[0] * W + c[1]] = painting; lastEdit = c[0] * W + c[1]; props = []; draw(); });
+  grid.addEventListener('pointermove', e => { const c = cellAt(e); hover = c; if (painting === null) { if (stamp) draw(); return; } if (!c) return;
+    if (cells[c[0] * W + c[1]] !== painting) { cells[c[0] * W + c[1]] = painting; lastEdit = c[0] * W + c[1]; draw(); } });
+  const up = () => { if (painting === null) return; painting = null; refresh(); };
+  grid.addEventListener('pointerup', up); grid.addEventListener('pointercancel', up);
+  document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    if (e.key === 'Enter') { e.preventDefault(); accept(); } else if (e.key === 'Tab') { e.preventDefault(); skip(); } else if (e.key === 'Escape') { e.preventDefault(); if (stamp) { setStamp(null); } else refuse(); } });
+  $('#accept').onclick = accept; $('#skip').onclick = skip; $('#refuse').onclick = refuse;
+  $('#undo').onclick = undo;
+  $('#clear').onclick = () => { if (!cells.some(v => v)) return; snapshot(); cells.fill(0); lastEdit = null; refresh(); };
+  $('#save').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({ band: [H, W], cells: Array.from(cells), placed: placed.map(p => ({ id: p.id, t: D.transforms[p.t], r: p.r, c: p.c })), log }, null, 1)], { type: 'application/json' })); a.download = `spell-v2-${Date.now()}.json`; a.click(); };
+  ['axisY', 'axisX', 'wrap'].forEach(id => $('#' + id).onchange = refresh);
+  $('#flagCells').onchange = e => { aspect = e.target.checked ? 1.7 : 1; layout(); };
+  $('#tier').onchange = () => { loadDict(); palette(); refresh(); };
+
+  // ---------- palette: the most woven symbols, to stamp from
+  function setStamp(w) { stamp = w; document.querySelectorAll('#palette canvas').forEach(c => c.classList.toggle('on', w && c.dataset.id === w.id)); grid.style.cursor = w ? 'copy' : 'crosshair'; draw(); }
+  function palette() {
+    const pal = $('#palette'); pal.replaceChildren();
+    for (const w of words.filter(w => w.h * w.w >= 5).slice(0, 36)) { const cv = thumb(w.rows, 3); cv.dataset.id = w.id; cv.title = `${w.id} · ${w.name} · ${w.n} on the plates`; cv.onclick = () => setStamp(stamp === w ? null : w); pal.append(cv); }
+  }
+
+  loadDict(); palette(); layout(); refresh();
+  window.addEventListener('resize', layout);
+})();
+</script>
+</body>
+</html>

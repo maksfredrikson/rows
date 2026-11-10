@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ornament keyboard</title>
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;background:#141414;color:#d8d8d8;font:13px/1.4 -apple-system,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px}
+  #buttons{display:flex;gap:8px;width:min(846px,100%);flex-wrap:wrap}
+  #buttons button{flex:1;min-width:70px;padding:10px 6px;border:1px solid #3a3a3a;border-radius:8px;background:#242424;color:#ddd;font:inherit;font-size:13px}
+  #buttons button.pri{background:#e8e8e8;color:#111;border-color:#e8e8e8;font-weight:600}
+  @media (max-width:900px){body{padding:10px}#keys{display:none!important}}
+  #bar{width:min(846px,100%);flex-wrap:wrap;display:flex;gap:18px;align-items:baseline;color:#9a9a9a;font-size:12px}
+  #bar b{color:#eee;font-weight:500}
+  #bar .sp{flex:1}
+  #stage{position:relative}
+  #props{width:min(846px,100%);display:flex;flex-direction:column;gap:3px;min-height:120px}
+  .p{display:flex;gap:12px;align-items:center;padding:4px 8px;border-radius:5px;border:1px solid #2a2a2a;color:#bbb;font-size:12px}
+  .p.on{border-color:#3373f2;color:#eee;background:#1b2130}
+  .p .k{width:14px;color:#777;font-variant-numeric:tabular-nums}
+  .p .src{width:52px;letter-spacing:.06em;font-size:10px;color:#8fb3ff}
+  .p .src.rule{color:#d9b65a}
+  .p .src.build{color:#7fd6a4}
+  .p .n{color:#777;margin-left:auto;white-space:nowrap}
+  @media (max-width:600px){.p{flex-wrap:wrap}.p .n{margin-left:26px;width:100%}}
+  .p canvas{image-rendering:pixelated}
+  #keys{width:min(846px,100%);display:grid;grid-template-columns:repeat(6,1fr);gap:6px 14px;color:#8a8a8a;font-size:11px;margin-top:6px}
+  #keys b{color:#ddd;font-weight:500;font-family:ui-monospace,Menlo,monospace;background:#242424;border:1px solid #3a3a3a;border-radius:4px;padding:0 5px;margin-right:4px}
+  #empty{color:#666;font-size:12px;padding:6px 8px}
+</style>
+</head>
+<body>
+<div id="bar"><b>Ornament keyboard</b><span id="dict"></span><span id="pos"></span><span class="sp"></span><span id="fig"></span></div>
+<div id="stage"></div>
+<div id="buttons"><button data-do="accept" class="pri">Accept</button><button data-do="next">Next</button><button data-do="refuse">Refuse</button><button data-do="undo">Undo</button><button data-do="row">New row</button></div>
+<div id="props"><div id="empty">Type a stroke. Completions come from the 1953 plates and are named by form only.</div></div>
+<div id="keys">
+  <span><b>h j k l</b> stroke left · down · up · right</span>
+  <span><b>y u b n</b> diagonal ↖ ↗ ↙ ↘</span>
+  <span><b>space</b> ink / unink, stay</span>
+  <span><b>arrows</b> move the cursor</span>
+  <span><b>enter</b> new row</span>
+  <span><b>⌫ / z</b> undo</span>
+  <span><b>tab</b> accept the lit proposal</span>
+  <span><b>1–9</b> pick a proposal</span>
+  <span><b>, .</b> previous · next proposal</span>
+  <span><b>esc</b> refuse all</span>
+  <span><b>s</b> save the log</span>
+  <span><b>shift+c</b> clear the band</span>
+</div>
+<script src="../vendor/p5.min.js"></script>
+<script>window.p5 || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"><\/script>')</script>
+<script src="../spell_data.js"></script>
+<script src="build_data.js"></script>
+<script src="sketch.js"></script>
+</body>
+</html>

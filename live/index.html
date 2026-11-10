@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The room weaves</title>
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;background:#141414;color:#d8d8d8;font:13px/1.4 -apple-system,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px}
+  #bar{width:min(560px,100%);display:flex;gap:14px;align-items:baseline;color:#9a9a9a;font-size:12px;flex-wrap:wrap}
+  #bar b{color:#eee;font-weight:500}
+  #net{color:#7fd6a4;margin-left:auto}
+  #edit{width:min(560px,100%);margin-top:-18px;position:relative;z-index:2}
+  #linecard{background:#2b2b2b;border:1px solid #4a4a4a;border-bottom-width:3px;border-radius:12px;padding:8px 6px;box-shadow:0 10px 22px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);display:flex;align-items:flex-end;gap:6px}
+  #line{display:block;flex:1;min-width:0;touch-action:none;cursor:pointer}
+  #linecard button{flex:none;width:34px;height:40px;border:0;border-radius:8px;background:#3a3a3a;color:#eee;font-size:24px;line-height:1;padding:0}
+  button:disabled{opacity:.3}
+  #cap{width:min(560px,100%);display:flex;flex-direction:column;text-align:center;min-height:36px;color:#9a9a9a;font-size:12px}
+  #cap b{color:#ddd;font-weight:500}
+  #actions{width:min(560px,100%);display:flex;gap:8px}
+  #accept{flex:2;padding:18px 6px;border:0;border-radius:12px;background:#e8e8e8;color:#111;font:inherit;font-size:18px;font-weight:600}
+  #post{flex:1;padding:18px 6px;border:1px solid #5a5a5a;border-radius:12px;background:transparent;color:#eee;font:inherit;font-size:15px}
+  #keys{width:min(560px,100%);color:#777;font-size:11px;text-align:center}
+  @media (max-width:700px){#keys{display:none}}
+</style>
+</head>
+<body>
+<div id="bar"><b>The room weaves</b><span id="pos"></span><span id="net"></span></div>
+<div id="stage"></div>
+<div id="edit"><div id="linecard"><button id="prev" aria-label="previous option">‹</button><canvas id="line" aria-label="your block and the line you are drawing: tap or drag to ink cells"></canvas><button id="nextb" aria-label="next option">›</button></div></div>
+<div id="cap"></div>
+<div id="actions"><button id="accept">Accept</button><button id="post">Post</button></div>
+<div id="keys">h l or drag: ink cells · space: ink / unink · , . : swap option · enter: accept the line · p: post the block · tap a line of your block to take it back</div>
+<script src="../vendor/p5.min.js"></script>
+<script>window.p5 || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"><\/script>')</script>
+<script src="../ends/ends_data.js"></script>
+<script src="sketch.js"></script>
+</body>
+</html>
