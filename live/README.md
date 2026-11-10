@@ -1,7 +1,9 @@
 # The room weaves (live)
 
-https://ornament-rows.netlify.app/live/ on phones, https://ornament-rows.netlify.app/live/display.html on
-the projector. Form only: no line, block or figure is given a meaning.
+**Live since 10 Nov 2026:** https://maksfredrikson.github.io/rows/live/ on phones,
+https://maksfredrikson.github.io/rows/live/display.html on the projector (GitHub Pages, public repository
+`maksfredrikson/rows`; the band is still Netlify's function, which the pages call across sites). Publish
+with `../publish.sh "what changed"`. The Netlify copy of the pages is frozen while its credits are out. Form only: no line, block or figure is given a meaning.
 
 ## The contributor's page (`index.html`, `sketch.js`), as of 10 Nov 2026
 
