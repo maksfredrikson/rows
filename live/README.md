@@ -11,18 +11,18 @@ with `../publish.sh "what changed"`. The Netlify copy of the pages is frozen whi
 and posts it. The wall shows the room's symbols as a grid that forms as people submit. No dictionary, no
 suggestions, no lines or blocks: the form is the person's.
 
-- **`index.html`, `sketch.js` (phones).** Plain canvas, no libraries. Drag to draw; a drag that starts on
+- **`index.html`, `draw.js` (phones).** Plain canvas, no libraries. Drag to draw; a drag that starts on
   an inked cell erases; fast strokes are joined. **Mirror** (on by default) draws on both sides of the
   middle column and is only a drawing aid. **Clear**, **Post**. The draft survives a reload. After
   posting: "Draw another".
-- **`display.html`, `display.js` (the wall).** Two columns. Left: every symbol as a tile, the grid
+- **`display.html`, `wall.js` (the wall).** Two columns. Left: every symbol as a tile, the grid
   re-fitting itself so all stay on screen (forty fit); a new symbol forms row by row behind a red line,
   with the maker's four-letter mark under it. Right: the count, Sound, and the join code (QR, enlarges on
   a click) with the address. With Sound on, each forming row is strummed on a synthesised цымбалы.
 - **How a symbol travels.** The store takes pieces of at most nine rows, so a symbol is posted as up to
   seven pieces, each tagged `s:<symbol id>:<piece>:<which pieces exist>` in its `exact` field; blank
   pieces are not sent. The wall shows a symbol once all its pieces are in, or after 12 s with what came.
-  Posts from before the symbol version (`SINCE` in `display.js`) are never fetched.
+  Posts from before the symbol version (`SINCE` in `wall.js`) are never fetched.
 - The line-by-line version (blocks, Accept, Post, the playing record with four voices) is kept at
   `lines/`.
 
